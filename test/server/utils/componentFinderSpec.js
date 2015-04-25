@@ -22,5 +22,18 @@ describe('[server/utils/componentFinder]', function () {
       let componentInfo = _.where(components, {name: componentName})[0];
       expect(componentInfo).to.eql({name: componentName, path: 'TestOldComponent.jsx'});
     });
+
+    it('By default, it should ignore non-components', function () {
+      let components = componentFinder.findComponents(path.resolve(__dirname, '../fixtures/components/'));
+
+      expect(components.length).to.equal(2);
+    });
+
+    it('Should show all files parsed if clean is false', function () {
+      let components = componentFinder.findComponents(path.resolve(__dirname, '../fixtures/components/'), {clean: false});
+
+      expect(components.length).to.equal(3);
+      expect(components, {path: 'SomeMixin.jsx'}).to.contain({path: 'SomeMixin.jsx'});
+    });
   });
 });

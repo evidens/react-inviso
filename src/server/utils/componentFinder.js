@@ -8,14 +8,26 @@ import traverse from 'traverse';
 
 const PARSE_OPTIONS = {ecmaVersion: 7, plugins: {jsx: true}};
 
+/**
+ * @typedef {{name:String, path:String}} ComponentInfo
+ */
+
 const componentFinder = {
   /**
+   * Find React components in a given path
+   *
    * @param {string} searchPath root path to search for components
-   * @param {string} pattern a glob pattern of file types to search (defaults to recursive jsx search)
+   * @param {Object} [options]
+   * @param {String} [options.pattern] a glob pattern of file types to search (defaults to recursive jsx search)
+   * @param {Boolean} [options.clean] removes non-component results (default: true)
+   * @return {ComponentInfo[]}
    */
-  findComponents (searchPath='./', pattern='**/*.jsx') {
+  findComponents (searchPath, options={}) {
+    let pattern = options.pattern || '**/*.jsx';
+    let clean = options.clean !== false;
     let components = glob.sync(pattern, {cwd: searchPath});
-    return components.map(function (componentFile) {
+
+    let componentsInfo = components.map(function (componentFile) {
       let code = fs.readFileSync(path.join(searchPath, componentFile), 'utf8');
       let tree;
       try {
@@ -27,7 +39,7 @@ const componentFinder = {
       // Seek new-style class first (faster)
       let className = _(tree.body)
         .where({type: 'ClassDeclaration'})
-        .pluck(['id', 'name'])
+        .pluck('id.name')
         .first();
 
       if (!className) {
@@ -43,8 +55,16 @@ const componentFinder = {
         });
       }
 
-      return {name: className, path: componentFile};
+      // Compact return value
+      return _.pick({name: className, path: componentFile}, _.identity);
     });
+
+    if (clean){
+      return _.filter(componentsInfo, info => _.isString(info.name));
+    } else {
+      return componentsInfo;
+    }
+
   },
   parseJsx (code) {
     return acorn.parse(code, PARSE_OPTIONS);
